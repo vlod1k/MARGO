@@ -10,6 +10,7 @@ One Wikipedia article a day, chosen around your interests. A new reason to stay 
 ![Platforms: Windows, Android, and Linux](https://img.shields.io/badge/platforms-Windows%20%7C%20Android%20%7C%20Linux-5952D4)
 ![Flutter and Dart](https://img.shields.io/badge/client-Flutter%20%2F%20Dart-02569B)
 ![FastAPI and Python](https://img.shields.io/badge/API-FastAPI%20%2F%20Python-009688)
+[![License: MIT](https://img.shields.io/badge/license-MIT-5952D4)](LICENSE)
 
 [Download](https://github.com/vlod1k/MARGO/releases/latest) · [Features](#features) · [Getting started](#getting-started) · [Development](#development) · [Documentation](#documentation)
 
@@ -255,3 +256,11 @@ The following guides are currently in Russian:
 - [Classification, Wikimedia ingestion, and attribution](docs/classification.md)
 - [Flutter client structure](apps/margo_flutter/README.md)
 - [Project concept](idea.md)
+
+## License
+
+MARGO's original source code and documentation are available under the [MIT License](LICENSE).
+
+Copyright (c) 2026 vlod1k.
+
+Third-party dependencies and Wikipedia content remain subject to their respective licenses.

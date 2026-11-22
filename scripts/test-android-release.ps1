@@ -29,6 +29,8 @@ $otherDigest = 'b' * 64
 $cases = @(
     @{ Name = 'numbered signer with LF'; Report = "Number of signers: 1`nSigner #1 certificate SHA-256 digest: $digest"; Accept = $true },
     @{ Name = 'numbered signer with CRLF'; Report = "Number of signers: 1`r`nSigner #1 certificate SHA-256 digest: $($digest.ToUpperInvariant())`r`n"; Accept = $true },
+    @{ Name = 'build-tools 37 V1 signer'; Report = "Number of signers: 1`nV1 Signer: certificate SHA-256 digest: $digest"; Accept = $true },
+    @{ Name = 'build-tools 37 V2 signer'; Report = "Number of signers: 1`nV2 Signer: certificate SHA-256 digest: $digest"; Accept = $true },
     @{ Name = 'build-tools 37 V3.0 signer'; Report = "Number of signers: 1`nV3.0 Signer: certificate SHA-256 digest: $digest"; Accept = $true },
     @{ Name = 'same certificate across signature schemes'; Report = "Number of signers: 1`nV3.0 Signer: certificate SHA-256 digest: $digest`nV3.1 Signer: certificate SHA-256 digest: $digest"; Accept = $true },
     @{ Name = 'different certificates across signature schemes'; Report = "Number of signers: 1`nV3.0 Signer: certificate SHA-256 digest: $digest`nV3.1 Signer: certificate SHA-256 digest: $otherDigest"; Accept = $false },

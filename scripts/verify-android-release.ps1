@@ -27,7 +27,7 @@ function Read-ApkIdentity([string]$Path) {
     $signerCounts = [regex]::Matches($signature, '(?m)^Number of signers:[ \t]*(\d+)[ \t]*\r?$')
     # apksigner labels vary by build-tools version and signature scheme.
     # Repeated appearances of the same certificate still identify one signing key.
-    $certificateMatches = [regex]::Matches($signature, '(?m)^(?:Signer (?:#\d+|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\))|V3\.[012] Signer:) certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t]*\r?$')
+    $certificateMatches = [regex]::Matches($signature, '(?m)^(?:Signer (?:#\d+|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\))|(?:V[12]|V3\.[012]) Signer:) certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t]*\r?$')
     $digests = @($certificateMatches | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } | Sort-Object -Unique)
     if ($signerCounts.Count -ne 1 -or $signerCounts[0].Groups[1].Value -ne '1' -or $digests.Count -ne 1) {
         $details = $signature -replace '\r?\n', '; '

@@ -15,16 +15,16 @@
 
 </div>
 
-![Превью настольного интерфейса MARGO](apps/margo_flutter/design-preview/desktop.png)
+![Экран статьи дня MARGO 0.4.5 в светлой теме](apps/margo_flutter/design-preview/desktop.png)
 
 <details>
 <summary>Мобильный интерфейс и тёмная тема</summary>
 
 <p align="center">
-  <img src="apps/margo_flutter/design-preview/mobile.png" alt="Превью мобильного интерфейса MARGO" width="320">
+  <img src="apps/margo_flutter/design-preview/mobile.png" alt="Мобильный интерфейс MARGO 0.4.5" width="320">
 </p>
 
-![Превью тёмной темы MARGO](apps/margo_flutter/design-preview/dark.png)
+![Экран статьи дня MARGO 0.4.5 в тёмной теме](apps/margo_flutter/design-preview/dark.png)
 
 </details>
 

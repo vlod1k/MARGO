@@ -1,0 +1,5 @@
+FROM postgres:17-alpine
+RUN apk add --no-cache python3
+WORKDIR /app
+COPY backend/workers/__init__.py backend/workers/alerts.py backend/workers/backup.py ./workers/
+ENTRYPOINT ["python3", "-m", "workers.backup"]

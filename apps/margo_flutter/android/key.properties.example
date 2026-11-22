@@ -1,0 +1,5 @@
+# Copy to key.properties (ignored). Use an absolute path with forward slashes.
+storeFile=C:/secure/margo-android-release.jks
+storePassword=REPLACE_LOCALLY
+keyAlias=margo-release
+keyPassword=REPLACE_LOCALLY

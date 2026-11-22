@@ -1,0 +1,106 @@
+name: MARGO checks and native builds
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: margo_test
+          POSTGRES_USER: margo
+          POSTGRES_PASSWORD: test-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U margo" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --project backend --locked
+      - run: uv run --project backend pytest backend/tests
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://margo:test-only-password@localhost:5432/margo_test
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+      - run: flutter pub get
+        working-directory: apps/margo_flutter
+      - run: flutter analyze
+        working-directory: apps/margo_flutter
+      - run: flutter test
+        working-directory: apps/margo_flutter
+      - run: flutter build windows --release
+        working-directory: apps/margo_flutter
+      - name: Compile development installer
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed.' }
+          ./scripts/build-windows-installer.ps1 -AllowUnsigned
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MARGO-Windows-Setup-UNSIGNED-CI-ONLY
+          path: dist/MARGO-Setup-*.exe
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MARGO-Windows-UNSIGNED-CI-ONLY
+          path: apps/margo_flutter/build/windows/x64/runner/Release/
+  android:
+    runs-on: ubuntu-latest
+    env:
+      MARGO_ANDROID_STORE_PASSWORD: ci-only-password
+      MARGO_ANDROID_KEY_PASSWORD: ci-only-password
+      MARGO_ANDROID_KEY_ALIAS: ci-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.9'
+      - run: flutter pub get
+        working-directory: apps/margo_flutter
+      - run: flutter build apk --debug
+        working-directory: apps/margo_flutter
+      - name: Create disposable release identity (never use for distribution)
+        shell: bash
+        run: |
+          echo "MARGO_ANDROID_KEYSTORE=$RUNNER_TEMP/ci-release.jks" >> "$GITHUB_ENV"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci-release.jks" -storetype JKS -alias ci-release -keyalg RSA -keysize 3072 -validity 2 -dname "CN=MARGO CI ONLY" -storepass:env MARGO_ANDROID_STORE_PASSWORD -keypass:env MARGO_ANDROID_KEY_PASSWORD
+          fingerprint=$(keytool -list -v -keystore "$RUNNER_TEMP/ci-release.jks" -storepass:env MARGO_ANDROID_STORE_PASSWORD -alias ci-release | sed -n 's/.*SHA256: //p' | tr -d ':')
+          test -n "$fingerprint"
+          echo "MARGO_ANDROID_CERT_SHA256=$fingerprint" >> "$GITHUB_ENV"
+      - name: Build previous and current release packages
+        shell: bash
+        working-directory: apps/margo_flutter
+        run: |
+          build=$(sed -nE 's/^version:.*\+([0-9]+)$/\1/p' pubspec.yaml)
+          test "$build" -gt 1
+          flutter build apk --release --build-number "$((build - 1))"
+          cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/previous.apk"
+          flutter build apk --release
+      - name: Verify release signature and upgrade compatibility
+        shell: pwsh
+        run: ./scripts/verify-android-release.ps1 -Apk apps/margo_flutter/build/app/outputs/flutter-apk/app-release.apk -PreviousApk "$env:RUNNER_TEMP/previous.apk"
+      - name: Verify account access in every packaged ABI
+        shell: pwsh
+        run: ./scripts/verify-android-account-access.ps1 -Apk apps/margo_flutter/build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MARGO-Android-release-CI-ONLY
+          path: apps/margo_flutter/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MARGO-Android-debug
+          path: apps/margo_flutter/build/app/outputs/flutter-apk/app-debug.apk

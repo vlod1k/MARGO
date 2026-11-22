@@ -1,0 +1,10 @@
+*
+!backend/
+backend/*
+!backend/workers/
+backend/workers/*
+!backend/workers/__init__.py
+!backend/workers/alerts.py
+!backend/workers/backup.py
+!ops/
+!ops/Dockerfile.backup

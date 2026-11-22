@@ -1,0 +1,103 @@
+services:
+  db:
+    restart: unless-stopped
+
+  api:
+    ports: !reset []
+    restart: unless-stopped
+    environment:
+      # Only Caddy accepts public traffic and it sets the forwarded headers.
+      FORWARDED_ALLOW_IPS: "*"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+
+  scheduler:
+    volumes:
+      - scheduler_status:/var/lib/margo/scheduler
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  restore-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: verifier
+      POSTGRES_PASSWORD: ${MARGO_VERIFY_PASSWORD:?Set MARGO_VERIFY_PASSWORD in .env}
+      POSTGRES_DB: postgres
+    # Scratch database: never mounts the production volume and exposes no public port.
+    volumes:
+      - restore_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verifier -d postgres"]
+      interval: 10s
+      retries: 10
+    mem_limit: 512m
+
+  backup:
+    build:
+      context: .
+      dockerfile: ops/Dockerfile.backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: thoth
+      PGDATABASE: thoth
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      VERIFY_PGHOST: restore-db
+      VERIFY_PGUSER: verifier
+      VERIFY_PGDATABASE: postgres
+      VERIFY_PGPASSWORD: ${MARGO_VERIFY_PASSWORD}
+      MARGO_BACKUP_RETENTION_DAYS: ${MARGO_BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ${MARGO_BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+      restore-db:
+        condition: service_healthy
+
+  monitor:
+    build: ./backend
+    command: ["python", "-m", "workers.monitor"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://thoth:${POSTGRES_PASSWORD}@db:5432/thoth
+      MARGO_MONITOR_URL: ${MARGO_MONITOR_URL:-https://${API_DOMAIN}/health}
+      MARGO_ALERT_WEBHOOK_URL: ${MARGO_ALERT_WEBHOOK_URL:-}
+      MARGO_ALERT_TELEGRAM_TOKEN: ${MARGO_ALERT_TELEGRAM_TOKEN:-}
+      MARGO_ALERT_TELEGRAM_CHAT_ID: ${MARGO_ALERT_TELEGRAM_CHAT_ID:-}
+      MARGO_CATALOG_LOW_WATERMARK: ${MARGO_CATALOG_LOW_WATERMARK:-60}
+      MARGO_CATALOG_AUTO_REFILL: ${MARGO_CATALOG_AUTO_REFILL:-true}
+      WIKIMEDIA_USER_AGENT: ${WIKIMEDIA_USER_AGENT:-}
+    volumes:
+      - scheduler_status:/var/lib/margo/scheduler:ro
+      - monitor_status:/var/lib/margo/monitor
+      - ${MARGO_BACKUP_DIR:-./backups}:/backups:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
+  scheduler_status:
+  monitor_status:
+  restore_data:

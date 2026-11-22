@@ -1,0 +1,72 @@
+name: MARGO Linux Flatpak
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder appstream desktop-file-utils xvfb xdotool gnome-keyring sqlite3
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive flathub org.gnome.Sdk//49 org.gnome.Platform//49 org.freedesktop.Sdk.Extension.llvm21//25.08
+      - name: Validate desktop metadata
+        run: |
+          desktop-file-validate packaging/flatpak/*.desktop
+          appstreamcli validate --no-net packaging/flatpak/*.metainfo.xml
+      - run: ./scripts/build-linux-flatpak.sh
+      - name: Install and launch the bundle
+        run: |
+          flatpak install --user --noninteractive --bundle dist/*.flatpak
+          xvfb-run -a -s '-screen 0 1280x800x24' dbus-run-session -- bash -euo pipefail <<'SMOKE'
+          printf "\n" | gnome-keyring-daemon --unlock --components=secrets
+          flatpak run io.github.vlod1k.MARGO &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          windows=$(timeout 45s xdotool search --sync --onlyvisible --name '^MARGO$')
+          window=${windows%%$'\n'*}
+          db="$HOME/.var/app/io.github.vlod1k.MARGO/data/io.github.vlod1k.MARGO/thoth.sqlite"
+          for attempt in {1..30}; do
+            kill -0 "$pid"
+            xdotool mousemove --window "$window" 960 214 click 1
+            if [[ -f "$db" ]] && [[ $(sqlite3 "$db" "SELECT json_extract(value, '$.active') FROM cache WHERE key = 'demo_session'") == 1 ]]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MARGO did not open the demo catalog." >&2
+          exit 1
+          SMOKE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MARGO-Linux-x86_64
+          path: dist/*.flatpak
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'release'
+    needs: flatpak
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MARGO-Linux-x86_64
+      - name: Attach verified bundle to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload --repo "$GITHUB_REPOSITORY" -- "$RELEASE_TAG" ./*.flatpak

@@ -36,6 +36,7 @@ class NotificationAdapter {
 
   Future<void> initialize(void Function(String) openNotification) async {
     tzdata.initializeTimeZones();
+    if (Platform.isLinux) return;
     await plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('ic_notification'),

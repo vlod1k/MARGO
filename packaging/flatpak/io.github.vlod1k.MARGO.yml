@@ -1,0 +1,51 @@
+id: io.github.vlod1k.MARGO
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.llvm21
+command: margo
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  - name: margo
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/llvm21/bin
+      build-args:
+        - --share=network
+      env:
+        CI: 'true'
+        FLUTTER_SUPPRESS_ANALYTICS: 'true'
+        PUB_CACHE: /run/build/margo/.pub-cache
+    build-commands:
+      - flutter/bin/flutter config --no-analytics
+      - flutter/bin/flutter precache --linux
+      - cd app && ../flutter/bin/flutter pub get --enforce-lockfile
+      - cd app && ../flutter/bin/flutter analyze --no-pub
+      - cd app && ../flutter/bin/flutter test --no-pub
+      - cd app && ../flutter/bin/flutter build linux --release --no-pub
+      - install -d /app/lib/margo
+      - cp -a app/build/linux/x64/release/bundle/. /app/lib/margo/
+      - install -Dm755 metadata/margo /app/bin/margo
+      - install -Dm644 metadata/io.github.vlod1k.MARGO.desktop /app/share/applications/io.github.vlod1k.MARGO.desktop
+      - install -Dm644 metadata/io.github.vlod1k.MARGO.metainfo.xml /app/share/metainfo/io.github.vlod1k.MARGO.metainfo.xml
+      - install -Dm644 metadata/icon.png /app/share/icons/hicolor/128x128/apps/io.github.vlod1k.MARGO.png
+    sources:
+      - type: archive
+        url: https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.9-stable.tar.xz
+        sha256: 25ed8c3c29d51a7353f2a944310b478af8214920639524b19c50a19e6c044c5a
+        dest: flutter
+      - type: dir
+        path: app
+        dest: app
+      - type: dir
+        path: metadata
+        dest: metadata

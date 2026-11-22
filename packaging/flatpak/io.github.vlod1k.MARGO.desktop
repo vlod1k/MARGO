@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=MARGO
+Comment=Discover a Wikipedia article every day
+Comment[ru]=Открывайте новую статью Википедии каждый день
+Exec=margo
+Icon=io.github.vlod1k.MARGO
+Terminal=false
+Categories=Education;

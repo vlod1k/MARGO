@@ -388,57 +388,61 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         : null,
                   ),
                   const SizedBox(height: 20),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Время напоминания'),
-                    subtitle: Text('$reminder · ${zone.text}'),
-                    trailing: const Icon(Icons.schedule, color: gold),
-                    onTap: () async {
-                      final parts = reminder.split(':');
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                          hour: int.parse(parts[0]),
-                          minute: int.parse(parts[1]),
-                        ),
-                      );
-                      if (time != null) {
-                        setState(
-                          () => reminder =
-                              '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                  if (!Platform.isLinux) ...[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Время напоминания'),
+                      subtitle: Text('$reminder · ${zone.text}'),
+                      trailing: const Icon(Icons.schedule, color: gold),
+                      onTap: () async {
+                        final parts = reminder.split(':');
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                            hour: int.parse(parts[0]),
+                            minute: int.parse(parts[1]),
+                          ),
                         );
-                      }
-                    },
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Ежедневное напоминание'),
-                    value: enabled,
-                    onChanged: data.isDemo
-                        ? null
-                        : (value) async {
-                            if (value && !notifications.ready) {
-                              setState(
-                                () => error =
-                                    'Уведомления недоступны: ${notifications.error ?? 'платформенный адаптер не инициализирован'}',
-                              );
-                              return;
-                            }
-                            if (value &&
-                                !await notifications.requestPermission()) {
-                              if (mounted) {
+                        if (time != null) {
+                          setState(
+                            () => reminder =
+                                '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                          );
+                        }
+                      },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Ежедневное напоминание'),
+                      value: enabled,
+                      onChanged: data.isDemo
+                          ? null
+                          : (value) async {
+                              if (value && !notifications.ready) {
                                 setState(
-                                  () => error = 'Разрешите уведомления в системных настройках.',
+                                  () => error =
+                                      'Уведомления недоступны: ${notifications.error ?? 'платформенный адаптер не инициализирован'}',
                                 );
+                                return;
                               }
-                              return;
-                            }
-                            if (mounted) setState(() => enabled = value);
-                          },
-                  ),
+                              if (value &&
+                                  !await notifications.requestPermission()) {
+                                if (mounted) {
+                                  setState(
+                                    () => error = 'Разрешите уведомления в системных настройках.',
+                                  );
+                                }
+                                return;
+                              }
+                              if (mounted) setState(() => enabled = value);
+                            },
+                    ),
+                  ],
                   Text(
                     data.isDemo
                         ? 'В деморежиме доступны встроенные карточки на русском языке. Серверные рекомендации и уведомления не используются.'
+                        : Platform.isLinux
+                        ? 'На Linux ежедневные напоминания пока недоступны.'
                         : 'Напоминаем каждый день, даже если приложение закрыто и статья ещё не загружена. На Windows расписание действует на 30 дней вперёд и продлевается при открытии приложения. Нажатие открывает «Сегодня»; для загрузки новой статьи нужен интернет. Доставка зависит от настроек уведомлений и энергосбережения ОС; точное время не гарантируется. Изменения вступают в силу после сохранения профиля.',
                     style: const TextStyle(
                       fontSize: 11,
@@ -491,7 +495,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           if (!widget.onboarding) ...[
             const SizedBox(height: 20),
-            const Card(margin: EdgeInsets.zero, child: UpdateStatus()),
+            if (Platform.isLinux)
+              const Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  title: Text('Обновления приложения'),
+                  subtitle: Text(
+                    'Скачайте новый пакет Flatpak из выпусков MARGO и установите его поверх текущей версии.',
+                  ),
+                ),
+              )
+            else
+              const Card(margin: EdgeInsets.zero, child: UpdateStatus()),
             const SizedBox(height: 20),
             Card(
               margin: EdgeInsets.zero,

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -82,6 +84,16 @@ void main() {
       isWindows: false,
     )..ready = true;
   });
+
+  test('Linux initializes time zones without starting notifications', () async {
+    final linux = NotificationAdapter(plugin: plugin);
+    await linux.initialize((_) => fail('Unexpected notification launch'));
+    await linux.update(account());
+    expect(tz.getLocation('Europe/Moscow').name, 'Europe/Moscow');
+    expect(linux.ready, isFalse);
+    expect(plugin.cancellations, 0);
+    expect(plugin.pending, isEmpty);
+  }, skip: !Platform.isLinux);
 
   test('Android repeats without a downloaded article or network', () async {
     await adapter.update(account());

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.vlod1k.MARGO</id>
+  <name>MARGO</name>
+  <summary>Discover a Wikipedia article every day</summary>
+  <summary xml:lang="ru">Открывайте новую статью Википедии каждый день</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <description>
+    <p>MARGO picks a daily Wikipedia article based on your interests. Save articles, track your reading and sync your library across devices.</p>
+    <p xml:lang="ru">MARGO подбирает статью Википедии на день по вашим интересам. Сохраняйте статьи, отмечайте прочитанное и синхронизируйте библиотеку между устройствами.</p>
+  </description>
+  <launchable type="desktop-id">io.github.vlod1k.MARGO.desktop</launchable>
+  <url type="homepage">https://github.com/vlod1k/MARGO</url>
+</component>

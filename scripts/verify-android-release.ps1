@@ -24,11 +24,18 @@ function Read-ApkIdentity([string]$Path) {
     $resolved = (Resolve-Path -LiteralPath $Path).Path
     $signature = (& $java -jar (Join-Path $buildTools.FullName 'lib/apksigner.jar') verify --verbose --print-certs $resolved 2>&1) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "Invalid APK signature: $Path" }
-    $digests = [regex]::Matches($signature, '(?m)^Signer #\d+ certificate SHA-256 digest:\s*([a-fA-F0-9]{64})\s*$')
-    if ($digests.Count -ne 1) { throw 'Expected exactly one APK signer.' }
+    $signerCounts = [regex]::Matches($signature, '(?m)^Number of signers:[ \t]*(\d+)[ \t]*\r?$')
+    # apksigner can label v3.1 certificates by SDK range instead of signer number.
+    # Repeated appearances of the same certificate still identify one signing key.
+    $certificateMatches = [regex]::Matches($signature, '(?m)^Signer (?:#\d+|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\)) certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t]*\r?$')
+    $digests = @($certificateMatches | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } | Sort-Object -Unique)
+    if ($signerCounts.Count -ne 1 -or $signerCounts[0].Groups[1].Value -ne '1' -or $digests.Count -ne 1) {
+        $details = ($signature -split '\r?\n' | Where-Object { $_ -match '^Number of signers:|^Signer.*certificate SHA-256 digest:' }) -join '; '
+        throw "Expected exactly one APK signer and signing certificate. apksigner reported: $details"
+    }
     $badging = (& $aapt dump badging $resolved) -join "`n"
     if ($LASTEXITCODE -ne 0 -or $badging -notmatch "package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'") { throw 'Unable to read APK identity.' }
-    $identity = @{ Package = $Matches[1]; Build = [long]$Matches[2]; Version = $Matches[3]; Sha256 = $digests[0].Groups[1].Value.ToLowerInvariant(); DebugCertificate = $signature -match 'CN=Android Debug'; Debuggable = $badging -match '(?m)^application-debuggable' }
+    $identity = @{ Package = $Matches[1]; Build = [long]$Matches[2]; Version = $Matches[3]; Sha256 = $digests[0]; DebugCertificate = $signature -match 'CN=Android Debug'; Debuggable = $badging -match '(?m)^application-debuggable' }
     return $identity
 }
 $current = Read-ApkIdentity $Apk

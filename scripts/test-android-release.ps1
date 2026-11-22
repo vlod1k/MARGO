@@ -66,3 +66,6 @@ try {
 }
 if ($failed.Count) { throw ($failed -join "`n") }
 Write-Host 'All Android release verification tests passed.'
+# The rejection test above intentionally sets a native failure exit code.
+# GitHub's pwsh wrapper propagates LASTEXITCODE, so report this suite's result.
+exit 0

@@ -53,7 +53,7 @@ app.mount('/updates', StaticFiles(directory=os.getenv('MARGO_RELEASES_DIR', str(
 DB=Depends(get_db)
 AUTH=Depends(current_user)
 
-# Local MVP throttling. Use an edge/shared rate limiter for a multi-worker deployment.
+# Local request throttling. Use an edge/shared rate limiter for a multi-worker deployment.
 _auth_attempts=defaultdict(deque)
 _auth_lock=threading.Lock()
 def auth_limit(request:Request):

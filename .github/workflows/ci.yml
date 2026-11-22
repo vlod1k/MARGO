@@ -67,6 +67,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Test Android SDK release verification
+        shell: pwsh
+        run: ./scripts/test-android-release-integration.ps1
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -107,3 +110,4 @@ jobs:
         with:
           name: MARGO-Android-debug
           path: apps/margo_flutter/build/app/outputs/flutter-apk/app-debug.apk
+

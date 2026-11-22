@@ -30,7 +30,7 @@ function Read-ApkIdentity([string]$Path) {
     $certificateMatches = [regex]::Matches($signature, '(?m)^Signer (?:#\d+|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\)) certificate SHA-256 digest:[ \t]*([a-fA-F0-9]{64})[ \t]*\r?$')
     $digests = @($certificateMatches | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } | Sort-Object -Unique)
     if ($signerCounts.Count -ne 1 -or $signerCounts[0].Groups[1].Value -ne '1' -or $digests.Count -ne 1) {
-        $details = ($signature -split '\r?\n' | Where-Object { $_ -match '^Number of signers:|^Signer.*certificate SHA-256 digest:' }) -join '; '
+        $details = $signature -replace '\r?\n', '; '
         throw "Expected exactly one APK signer and signing certificate. apksigner reported: $details"
     }
     $badging = (& $aapt dump badging $resolved) -join "`n"
@@ -55,3 +55,4 @@ if ($PreviousApk) {
 }
 Write-Host "Verified APK $($current.Version)+$($current.Build); signer SHA-256: $($current.Sha256)"
 if ($current.DebugCertificate) { Write-Warning 'Legacy Android identity retained for existing installations. This is not eligible for Google Play publication.' }
+
